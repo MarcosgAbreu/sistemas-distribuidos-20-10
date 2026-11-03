@@ -20,6 +20,7 @@ typedef struct {
 } semaforo_t;
 
 static semaforo_t recurso;
+static int nresposta;
 
 /* Prepara o semáforo com o valor inicial e os primitivos de espera. */
 static void semaforo_init(semaforo_t *s, int valor)
@@ -56,7 +57,9 @@ static void imprime_hora(const char *rotulo, time_t sec)
 
     localtime_r(&sec, &tm);
     strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
-    printf("%s %ld (%s)\n", rotulo, (long)sec, buf);
+    printf("  %s\n", rotulo);
+    printf("    %s\n", buf);
+    printf("    %ld s desde 1970\n\n", (long)sec);
     fflush(stdout);
 }
 
@@ -87,6 +90,7 @@ static void *atende(void *arg)
     int newsockid = *(int *)arg;
     struct timeval tp;
     struct timezone tzp;
+    time_t hora_cliente;
 
     free(arg);
 
@@ -99,14 +103,19 @@ static void *atende(void *arg)
 
     tp.tv_sec = (time_t)ntohl((uint32_t)tp.tv_sec);
     tp.tv_usec = (suseconds_t)ntohl((uint32_t)tp.tv_usec);
-    imprime_hora("server: remote time is", tp.tv_sec);
+    hora_cliente = tp.tv_sec;
 
     /* Só um cliente por vez. Quem chega depois fica parado neste wait. */
     semaforo_wait(&recurso);
 
     /* Pega a hora local, converte para a rede e devolve ao cliente. */
+    nresposta++;
+    printf("\n-------- resposta %d --------\n\n", nresposta);
+    imprime_hora("hora do cliente", hora_cliente);
     gettimeofday(&tp, &tzp);
-    imprime_hora("server: local time is", tp.tv_sec);
+    imprime_hora("hora do servidor", tp.tv_sec);
+    printf("----------------------------\n");
+    fflush(stdout);
 
     tp.tv_sec = (time_t)htonl((uint32_t)tp.tv_sec);
     tp.tv_usec = (suseconds_t)htonl((uint32_t)tp.tv_usec);
@@ -152,6 +161,10 @@ int main(void)
         printf("erro listening: %d\n", errno);
         exit(1);
     }
+
+    printf("esperando clientes na porta %d\n", MY_PORT_ID);
+    printf("uma resposta por vez, %d s entre cada uma\n", BLOQUEIO_RECURSO_S);
+    fflush(stdout);
 
     /* Aceita conexões sem parar. Cada uma vira uma thread de atendimento. */
     for (;;) {

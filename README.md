@@ -6,7 +6,7 @@ Os fontes são o `cliente_tempo.c` e o `servidor_tempo.c`.
 
 ## Como funciona
 
-O cliente abre um socket TCP, conecta em `127.0.0.1` na porta `6090` e manda a hora da própria máquina (`gettimeofday`). Depois fica esperando a resposta. Quando chega, ele imprime as duas horas: a local e a do servidor. Cada uma aparece do jeito cru (segundos desde 01/01/1970) e também formatada (`AAAA-MM-DD HH:MM:SS`).
+O cliente abre um socket TCP, conecta no IP passado na linha de comando, na porta `6090`, e manda a hora da própria máquina (`gettimeofday`). Depois fica esperando a resposta. Quando chega, ele imprime as duas horas: a local e a do servidor. Cada uma aparece do jeito cru (segundos desde 01/01/1970) e também formatada (`AAAA-MM-DD HH:MM:SS`).
 
 O servidor fica em loop aceitando conexões. Cada cliente vira uma thread, então vários podem estar conectados ao mesmo tempo. Quem controla o atendimento é um semáforo binário:
 
@@ -37,20 +37,28 @@ Sobe o servidor num terminal e deixa ele rodando:
 Em outros terminais, um cliente por vez, ou vários juntos:
 
 ```bash
-./cliente_tempo
+./cliente_tempo 127.0.0.1
 ```
+
+Na rede local, troca `127.0.0.1` pelo IP da máquina onde o servidor está.
 
 Para ver o bloqueio, abre três terminais e dispara os três clientes quase ao mesmo tempo. O primeiro responde na hora. O segundo sai cerca de 2 segundos depois. O terceiro, cerca de 4.
 
 Exemplo do que o cliente imprime:
 
 ```text
-Criando struct addr p/ server
-client: local time is 1792459446 (2026-10-19 22:24:06)
-client: remote time is 1792459448 (2026-10-19 22:24:08)
+conectado em 127.0.0.1, porta 6090
+
+  hora desta maquina
+    2026-10-19 22:24:06
+    1792459446 s desde 1970
+
+  hora do servidor
+    2026-10-19 22:24:08
+    1792459448 s desde 1970
 ```
 
-`local time` é a hora da máquina do cliente, no momento em que ele pediu. `remote time` é a hora do servidor, no momento em que aquele cliente foi atendido. Se a segunda estiver 2 segundos na frente, esse cliente esperou o anterior soltar o recurso.
+`hora desta maquina` é a hora do cliente, no momento em que ele pediu. `hora do servidor` é a hora no momento em que aquele cliente foi atendido. Se a segunda estiver 2 segundos na frente, esse cliente esperou o anterior soltar o recurso. No servidor cada bloco sai numerado (`resposta 1`, `resposta 2`, ...).
 
 Para encerrar o servidor, `Ctrl+C` no terminal dele.
 
